@@ -1,0 +1,1886 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Somatic - Seasonal Physics Sandbox</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.25.6/babel.min.js"></script>
+  <style>
+    html, body { background: #020617; margin: 0; }
+    /* Simple loading state shown until React mounts */
+    #boot { color: #64748b; font-family: ui-sans-serif, system-ui, sans-serif;
+            display: flex; align-items: center; justify-content: center;
+            min-height: 100vh; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div id="root"><div id="boot">Loading Somatic... (needs an internet connection on first open)</div></div>
+  <script type="text/babel" data-type="module" data-presets="react">
+import React, { useState, useEffect, useMemo, useRef } from "https://esm.sh/react@18.3.1";
+import { createRoot } from "https://esm.sh/react-dom@18.3.1/client?deps=react@18.3.1";
+import { 
+  Sun, 
+  Thermometer, 
+  Globe, 
+  Calendar, 
+  Clock, 
+  Wind, 
+  CloudRain, 
+  CloudSnow, 
+  Info, 
+  Compass, 
+  Play, 
+  Pause, 
+  RotateCcw,
+  Sliders,
+  ChevronRight,
+  MapPin,
+  Flame,
+  Snowflake,
+  Languages,
+  HelpCircle,
+  X
+} from "https://esm.sh/lucide-react@0.263.0?deps=react@18.3.1";
+
+const TRANSLATIONS = {
+  en: {
+    title: "Somatic",
+    subtitle: "An interactive sandbox that shows how Earth's tilted axis creates the seasons. Change the latitude, date, time, and tilt — then watch daylight, sun angle, and temperature respond.",
+    tabSimulation: "Interactive Sandbox",
+    tabScience: "Seasonal Physics Explainer",
+    controlDesk: "Control Desk",
+    reset: "Reset",
+    locationPresets: "Location Presets",
+    latitude: "Latitude",
+    north: "North (N)",
+    south: "South (S)",
+    equator: "Equator",
+    northPole: "North Pole",
+    southPole: "South Pole",
+    calendarDate: "Calendar Date",
+    dayOfYr: "Day",
+    solsticeRef: "Jun 21 (Solstice)",
+    pauseOrbit: "Pause Orbit",
+    playOrbit: "Play Year Orbit",
+    timeOfDay: "Time of Day",
+    midnight: "Midnight",
+    noon: "Noon",
+    pauseRotation: "Pause Rotation",
+    playRotation: "Spin Earth Day/Night",
+    axialTiltLabel: "Axial Tilt (\"What-If\")",
+    noSeasons: "0° (No Seasons)",
+    earthReal: "23.5° (Earth)",
+    extremeTilt: "45° (Extreme)",
+    temperature: "Temperature",
+    approxFeel: "Approximate local feel",
+    dayLength: "Day Length",
+    sunAltitude: "Sun Altitude",
+    maxDailyElev: "Max daily elevation",
+    solarIntensity: "Solar Intensity",
+    incidentFlux: "Reaching the ground (clear sky)",
+    toaLabel: "Top of atmosphere",
+    landscapeTitle: "Dynamic Landscape View",
+    earthSunRel: "Earth–Sun Geometry (Noon View)",
+    solarDeclination: "Solar Declination (Sun Angle to Equator)",
+    polarThreshold: "Polar Zone Threshold",
+    astronomicalInsights: "Astronomical Insights",
+    solsticeProgress: "Solstice Progress",
+    toDecSolstice: "Moving to Dec Solstice",
+    toJunSolstice: "Moving to Jun Solstice",
+    radiativeFlux: "Daily Solar Energy",
+    maxCap: "of Max",
+    sandboxTip: "*Tip: Drag up or down on the globe to travel anywhere on Earth instantly. Try setting the Axial Tilt to 0° — day length becomes 12 hours everywhere, and the seasons fade away!",
+    scienceTitle: "What Causes the Seasons?",
+    scienceMythVsReality: "The Myth vs. Reality",
+    mythText: "Myth: Earth experiences seasons because its orbit is an ellipse, bringing us closer to the Sun in summer and further away in winter.",
+    realityText: "Reality: Earth's orbit is almost a perfect circle! In fact, the Earth is closest to the Sun (perihelion) in early January, which is winter in the Northern Hemisphere. The true cause of seasons is Earth's 23.5° axial tilt.",
+    scienceMechanisms: "Two Main Mechanisms",
+    mechanism1Title: "Angle of Incidence (Concentration):",
+    mechanism1Desc: "When a hemisphere is tilted towards the Sun, solar rays hit the surface at a direct, steep angle. This concentrates the heat over a small area. In winter, the same amount of solar energy is spread over a much larger area due to the shallow angle.",
+    mechanism2Title: "Day Length:",
+    mechanism2Desc: "The hemisphere tilted towards the sun is illuminated for longer than 12 hours a day, allowing the land and oceans more time to absorb energy and warm up.",
+    mathProfileTitle: "Mathematical Solar Profile",
+    mathFormulaDesc: "The angle of the noon sun can be modeled using simple coordinate geometry. Given your latitude φ and the solar declination angle δ:",
+    mathFormula: "Noon Sun Elevation Angle = 90° - |Latitude - Declination|",
+    mathDeclinationDesc: "The declination angle fluctuates between +23.5° (Summer solstice in June, tilted towards Sun) and -23.5° (Winter solstice in December, tilted away from Sun) throughout the year.",
+    juneSolsticeTitle: "June Solstice",
+    juneSolsticeDesc: "Northern Hemisphere experiences maximum sun angle and longest day length. Southern Hemisphere is in mid-winter.",
+    equinoxTitle: "Equinoxes",
+    equinoxDesc: "March and September. The tilt is neutral relative to the sun. Every place on Earth receives exactly 12 hours of day and night.",
+    decSolsticeTitle: "December Solstice",
+    decSolsticeDesc: "Southern Hemisphere experiences peak summer, while Northern Hemisphere drops into shortest day length winter.",
+    footerText: "© 2026 Somatic. Powered by React & High Fidelity Orbital Math.",
+    tropicsInfo: "You are in the Tropics. Here the Sun passes straight overhead twice a year. Seasons are set mainly by shifts in rainfall (wet and dry seasons) rather than by winter cold.",
+    polarInfo: "You are in the Polar Regions. Because Earth's axis is tilted, you get extreme cycles here: the Midnight Sun in summer (24 hours of light) and the Polar Night in winter (24 hours of dark).",
+    temperateInfo: "You are in the Temperate Zone, with a clear cycle of four seasons. Day length changes a lot through the year, and the warmest or coldest weather arrives about 4–6 weeks after the longest or shortest day.",
+    polarDayLabel: "Polar Day (24 hrs light)",
+    polarNightLabel: "Polar Night (24 hrs dark)",
+    hrsOfNight: "hrs of night",
+    globeLabel: "Seasonal Globe (Live View)",
+    globeInstruction: "Drag up or down on the globe to pick your latitude. Band colors show each hemisphere's current season; the shaded half is night.",
+    legendSunlight: "Sunlight",
+    legendNight: "Night",
+    helpButton: "Help",
+    helpTitle: "How to use Somatic",
+    helpIntro: "Somatic lets you play with the real astronomy behind the seasons. Everything updates live — move any slider and watch every panel react. Here's what each control does:",
+    helpClose: "Got it — let's explore!",
+    helpItems: [
+      {
+        title: "🌍 Seasonal Globe",
+        desc: "Drag up or down on the globe to choose where on Earth you are — the land shapes help you find your home region. Band colors show each hemisphere's season, and the shaded half is night. Try it: drag to the very top and you're in the Arctic!"
+      },
+      {
+        title: "📍 Location Presets",
+        desc: "One click takes you to a real place. Try Bangkok to see tropical wet/dry seasons, or the South Pole for six months of darkness."
+      },
+      {
+        title: "📅 Calendar Date + Play Year Orbit",
+        desc: "Slide through the year, or press Play to watch the seasons cycle on their own. Watch the globe lean toward and away from the Sun!"
+      },
+      {
+        title: "🕐 Time of Day + Spin Earth",
+        desc: "Move through one day, from midnight to noon and back. The sun and moon arc across the landscape — try sunrise (about 06:00) to see the dawn colors."
+      },
+      {
+        title: "🧭 Axial Tilt (What-If)",
+        desc: "The big experiment! Earth's real tilt is 23.5°. Slide it to 0° and the seasons disappear everywhere. Slide it to 45° and they become extreme."
+      },
+      {
+        title: "📊 Info Cards",
+        desc: "Temperature (tap to switch °C/°F), day length, the sun's height in the sky, and how much sunlight power reaches the ground."
+      },
+      {
+        title: "🏞️ Landscape View",
+        desc: "A living picture of your chosen place: season colors, weather, snow, rain, falling leaves, and the sun and moon in the sky."
+      },
+      {
+        title: "🔬 Seasonal Physics Explainer tab",
+        desc: "Read the science behind everything you just played with — why tilt (not distance!) causes the seasons."
+      }
+    ],
+    atmosphereTitle: "Why is sunlight weaker at ground level?",
+    atmosphereDesc: "Sunlight arrives at the top of the atmosphere carrying about 1,361 W/m². Before it reaches the ground, the air absorbs and scatters part of that energy. When the Sun is low in the sky, its light must travel a much longer path through the air (scientists call this a larger \"air mass\"), so even less energy gets through. That is why the ground value in the simulator is always lower than the top-of-atmosphere value — and why sunlight feels weak at sunrise and sunset. The simulator uses a simplified clear-sky model, so real clouds and haze would lower it further.",
+    seasons: {
+      Winter: "Winter",
+      Summer: "Summer",
+      Spring: "Spring",
+      Autumn: "Autumn",
+      WetHigh: "Wet/High Sun Season",
+      DryLow: "Dry/Low Sun Season"
+    },
+    weather: {
+      blizzard: "Blizzard conditions",
+      snowLight: "Light Snow / Frost",
+      extremeHeat: "Extremely Hot & Dry",
+      tropicalShowers: "Heavy Tropical Showers",
+      passingClouds: "Passing Clouds",
+      scatteredShowers: "Scattered Showers",
+      pleasantSunny: "Pleasant & Sunny",
+      clearSky: "Clear"
+    }
+  },
+  th: {
+    title: "Somatic",
+    subtitle: "แซนด์บ็อกซ์จำลองที่แสดงให้เห็นว่าแกนโลกที่เอียงสร้างฤดูกาลได้อย่างไร ลองปรับละติจูด วันที่ เวลา และมุมเอียง แล้วดูว่าแสงแดด มุมดวงอาทิตย์ และอุณหภูมิเปลี่ยนไปอย่างไร",
+    tabSimulation: "แซนด์บ็อกซ์จำลอง",
+    tabScience: "หลักฟิสิกส์แห่งฤดูกาล",
+    controlDesk: "แผงควบคุม",
+    reset: "รีเซ็ต",
+    locationPresets: "ตำแหน่งแนะนำ",
+    latitude: "ละติจูด",
+    north: "เหนือ (N)",
+    south: "ใต้ (S)",
+    equator: "เส้นศูนย์สูตร",
+    northPole: "ขั้วโลกเหนือ",
+    southPole: "ขั้วโลกใต้",
+    calendarDate: "วันที่ตามปฏิทิน",
+    dayOfYr: "วันที่",
+    solsticeRef: "21 มิ.ย. (ครีษมายัน)",
+    pauseOrbit: "หยุดจำลองวงโคจร",
+    playOrbit: "เริ่มจำลองวงโคจรรายปี",
+    timeOfDay: "เวลาในรอบวัน",
+    midnight: "เที่ยงคืน",
+    noon: "เที่ยงวัน",
+    pauseRotation: "หยุดโลกหมุนรอบตัวเอง",
+    playRotation: "จำลองโลกหมุนรอบตัวเอง",
+    axialTiltLabel: "มุมเอียงแกนหมุนโลก (สมมติฐาน)",
+    noSeasons: "0° (ไม่มีฤดูกาล)",
+    earthReal: "23.5° (โลกจริง)",
+    extremeTilt: "45° (สุดขั้ว)",
+    temperature: "อุณหภูมิ",
+    approxFeel: "ความรู้สึกสัมผัสโดยประมาณ",
+    dayLength: "ความยาวนานของกลางวัน",
+    sunAltitude: "มุมเงยของดวงอาทิตย์",
+    maxDailyElev: "มุมเงยสูงสุดประจำวัน",
+    solarIntensity: "ความเข้มแสงอาทิตย์",
+    incidentFlux: "ที่ตกถึงพื้นดิน (ท้องฟ้าแจ่มใส)",
+    toaLabel: "นอกชั้นบรรยากาศ",
+    landscapeTitle: "มุมมองภูมิทัศน์ตามฤดูกาล",
+    earthSunRel: "ปฏิสัมพันธ์โลก-ดวงอาทิตย์ (แนวระนาบเที่ยงวัน)",
+    solarDeclination: "มุมบ่ายเบนดวงอาทิตย์ (มุมดวงอาทิตย์เทียบกับเส้นศูนย์สูตร)",
+    polarThreshold: "เกณฑ์ขอบเขตวงกลมขั้วโลก",
+    astronomicalInsights: "ข้อมูลเชิงลึกดาราศาสตร์",
+    solsticeProgress: "การเคลื่อนตัวของอายัน",
+    toDecSolstice: "มุ่งสู่ เหมายัน (ธ.ค.)",
+    toJunSolstice: "มุ่งสู่ ครีษมายัน (มิ.ย.)",
+    radiativeFlux: "พลังงานแสงอาทิตย์รายวัน",
+    maxCap: "ของเกณฑ์สุดขีด",
+    sandboxTip: "*เคล็ดลับ: ลากขึ้นหรือลงบนลูกโลกเพื่อย้ายไปที่ใดก็ได้บนโลกทันที! ลองปรับแกนโลกเอียงเป็น 0° ดูสิ ความยาวกลางวันจะกลายเป็น 12 ชั่วโมงเท่ากันทั่วโลก และฤดูกาลจะค่อย ๆ จางหายไป!",
+    scienceTitle: "อะไรคือสาเหตุที่แท้จริงของการเกิดฤดูกาล?",
+    scienceMythVsReality: "ความเชื่อผิด ๆ ปะทะ ความเป็นจริง",
+    mythText: "ความเชื่อผิด ๆ: โลกเกิดฤดูกาลขึ้นเนื่องจากวงโคจรเป็นวงรี ส่งผลให้โลกเข้าใกล้ดวงอาทิตย์ที่สุดในฤดูร้อน และเคลื่อนที่ออกไปไกลดวงอาทิตย์ที่สุดในฤดูหนาว",
+    realityText: "ความเป็นจริง: วงโคจรของโลกนั้นเกือบจะเป็นวงกลมสมบูรณ์แบบ! ที่จริงแล้ว โลกของเราโคจรเข้าใกล้ดวงอาทิตย์ที่สุด (จุดใกล้ดวงอาทิตย์ที่สุด หรือ Perihelion) ในช่วงต้นเดือนมกราคม ซึ่งเป็นฤดูหนาวของซีกโลกเหนือด้วยซ้ำ สาเหตุที่แท้จริงของฤดูกาลคือ แกนโลกที่เอียง 23.5° สัมพัทธ์กับระนาบโคจรต่างหาก",
+    scienceMechanisms: "สองกลไกหลักทางกายภาพ",
+    mechanism1Title: "มุมตกกระทบของแสง (ความเข้มของพลังงาน):",
+    mechanism1Desc: "เมื่อซีกโลกด้านหนึ่งเอียงเข้าหาดวงอาทิตย์ รังสีจะตกกระทบพื้นผิวเป็นมุมชันและตรง ซึ่งจะบีบพลังงานความร้อนให้กระจุกตัวอยู่ในพื้นที่จำกัด แต่ในฤดูหนาว พลังงานแสงอาทิตย์ปริมาณเท่ากันจะกระจายออกไปเป็นพื้นที่กว้างกว่ามากเนื่องจากมุมเฉียงที่ราบไปกับพื้นผิว",
+    mechanism2Title: "ความยาวนานของวัน:",
+    mechanism2Desc: "ซีกโลกที่เอียงเข้าหาดวงอาทิตย์จะได้รับแสงสว่างยาวนานกว่า 12 ชั่วโมงต่อวัน ส่งผลให้ผืนดินและมหาสมุทรมีเวลาดูดซับพลังงานความร้อนสะสมเพิ่มขึ้น",
+    mathProfileTitle: "แบบจำลองทางคณิตศาสตร์ของดวงอาทิตย์",
+    mathFormulaDesc: "เราสามารถคำนวณมุมเงยสูงสุดของดวงอาทิตย์ ณ เวลาเที่ยงวัน ได้ด้วยการวิเคราะห์เชิงพิกัดอย่างง่าย เมื่อกำหนดให้ละติจูดของเราเป็น φ และมุมบ่ายเบนดวงอาทิตย์เป็น δ:",
+    mathFormula: "มุมเงยของดวงอาทิตย์ตอนเที่ยงวัน = 90° - |ละติจูด - มุมบ่ายเบน|",
+    mathDeclinationDesc: "ค่ามุมบ่ายเบน (δ) นี้จะแกว่งตัวอยู่ระหว่าง +23.5° (ครีษมายันในเดือนมิถุนายน แกนเหนือเอียงเข้าหาแสงอาทิตย์มากที่สุด) ถึง -23.5° (เหมายันในเดือนธันวาคม แกนเหนือเอียงออกจากแสงอาทิตย์มากที่สุด) ในรอบ 1 ปี",
+    juneSolsticeTitle: "ครีษมายัน (มิถุนายน)",
+    juneSolsticeDesc: "ซีกโลกเหนือได้มุมตกกระทบตรงที่สุดและกลางวันยาวที่สุด ในขณะที่ซีกโลกใต้เข้าสู่ช่วงกลางฤดูหนาว",
+    equinoxTitle: "วิษุวัต (มีนาคม / กันยายน)",
+    equinoxDesc: "แกนโลกไม่เอียงเข้าหรือออกจากดวงอาทิตย์ ทุกตำแหน่งบนโลกมีกลางวันและกลางคืนยาวนาน 12 ชั่วโมงเท่ากันพอดี",
+    decSolsticeTitle: "เหมายัน (ธันวาคม)",
+    decSolsticeDesc: "ซีกโลกใต้เข้าสู่ช่วงกลางฤดูร้อนอย่างเต็มที่ ในขณะที่ซีกโลกเหนือมีเวลากลางวันสั้นที่สุดและเริ่มฤดูหนาว",
+    footerText: "© 2026 Somatic. ขับเคลื่อนด้วย React และคณิตศาสตร์วงโคจรความเที่ยงตรงสูง",
+    tropicsInfo: "คุณอยู่ในเขตร้อน (Tropics) ดวงอาทิตย์จะโคจรผ่านตรงศีรษะพอดี (จุดเหนือศีรษะ) ปีละ 2 ครั้ง ฤดูกาลส่วนใหญ่จึงกำหนดโดยการเปลี่ยนผ่านของปริมาณน้ำฝน (ฤดูฝน/ฤดูแล้ง) มากกว่าการเปลี่ยนแปลงอุณหภูมิรุนแรงแบบหิมะตก",
+    polarInfo: "คุณอยู่ในเขตขั้วโลก (Polar Regions) ที่ละติจูดนี้ คุณจะเผชิญกับวัฏจักรสุดขั้วของ พระอาทิตย์เที่ยงคืน ในฤดูร้อน และ คืนโพลาร์ (มืดมิดตลอด 24 ชั่วโมง) ในฤดูหนาว เนื่องจากลักษณะทางเรขาคณิตของวงโคจร",
+    temperateInfo: "คุณอยู่ในเขตอบอุ่น (Temperate Zone) คุณจะพบกับวัฏจักร 4 ฤดูที่ชัดเจน (ใบไม้ผลิ ร้อน ใบไม้ร่วง หนาว) ความยาวนานของกลางวันแตกต่างกันอย่างชัดเจนในแต่ละปี และอุณหภูมิพื้นผิวจริงจะมีความล่าช้าจากค่าการรับแสงมากที่สุดประมาณ 4-6 สัปดาห์",
+    polarDayLabel: "กลางวันโพลาร์ (สว่าง 24 ชม.)",
+    polarNightLabel: "กลางคืนโพลาร์ (มืด 24 ชม.)",
+    hrsOfNight: "ชม. (กลางคืน)",
+    globeLabel: "ลูกโลกฤดูกาล (มุมมองสด)",
+    globeInstruction: "ลากขึ้นหรือลงบนลูกโลกเพื่อเลือกละติจูด สีของแต่ละแถบแสดงฤดูกาลปัจจุบันของซีกโลกนั้น ส่วนด้านที่มืดคือเวลากลางคืน",
+    legendSunlight: "ด้านรับแสง",
+    legendNight: "ด้านกลางคืน",
+    helpButton: "วิธีใช้",
+    helpTitle: "วิธีใช้งาน Somatic",
+    helpIntro: "Somatic ให้คุณทดลองเล่นกับดาราศาสตร์จริงเบื้องหลังการเกิดฤดูกาล ทุกอย่างอัปเดตแบบสด ๆ — ลองเลื่อนแถบใดก็ได้แล้วดูทุกแผงตอบสนองทันที นี่คือหน้าที่ของปุ่มควบคุมแต่ละอัน:",
+    helpClose: "เข้าใจแล้ว เริ่มสำรวจเลย!",
+    helpItems: [
+      {
+        title: "🌍 ลูกโลกฤดูกาล",
+        desc: "ลากขึ้นหรือลงบนลูกโลกเพื่อเลือกตำแหน่งของคุณบนโลก — รูปทรงแผ่นดินช่วยให้หาภูมิภาคบ้านเราเจอง่ายขึ้น สีของแถบแสดงฤดูกาลของแต่ละซีกโลก และครึ่งที่มืดคือเวลากลางคืน ลองลากขึ้นไปบนสุดดูสิ คุณจะไปอยู่แถบอาร์กติกเลย!"
+      },
+      {
+        title: "📍 ตำแหน่งแนะนำ",
+        desc: "คลิกเดียวพาไปสถานที่จริงได้ทันที ลองกดกรุงเทพฯ เพื่อดูฤดูฝน/ฤดูแล้งแบบเขตร้อน หรือขั้วโลกใต้เพื่อสัมผัสความมืด 6 เดือนเต็ม"
+      },
+      {
+        title: "📅 วันที่ตามปฏิทิน + เล่นวงโคจรรายปี",
+        desc: "เลื่อนผ่านทั้งปี หรือกดเล่นเพื่อดูฤดูกาลหมุนเวียนเองอัตโนมัติ สังเกตลูกโลกเอียงเข้าหาและออกจากดวงอาทิตย์!"
+      },
+      {
+        title: "🕐 เวลาในรอบวัน + จำลองโลกหมุน",
+        desc: "เลื่อนผ่านหนึ่งวัน ตั้งแต่เที่ยงคืนถึงเที่ยงวันแล้ววนกลับ ดวงอาทิตย์และดวงจันทร์จะโค้งข้ามท้องฟ้าในภาพภูมิทัศน์ ลองตั้งเวลาประมาณ 06:00 เพื่อชมสีสันยามรุ่งอรุณ"
+      },
+      {
+        title: "🧭 มุมเอียงแกนโลก (สมมติฐาน)",
+        desc: "การทดลองชิ้นใหญ่! แกนโลกจริงเอียง 23.5° ลองเลื่อนเป็น 0° แล้วฤดูกาลจะหายไปทั่วทั้งโลก หรือเลื่อนเป็น 45° แล้วฤดูกาลจะสุดขั้วยิ่งขึ้น"
+      },
+      {
+        title: "📊 การ์ดข้อมูล",
+        desc: "อุณหภูมิ (กดสลับ °C/°F ได้) ความยาวกลางวัน มุมเงยดวงอาทิตย์ และพลังงานแสงอาทิตย์ที่ตกถึงพื้นดิน"
+      },
+      {
+        title: "🏞️ มุมมองภูมิทัศน์",
+        desc: "ภาพมีชีวิตของสถานที่ที่คุณเลือก: สีสันตามฤดูกาล สภาพอากาศ หิมะ ฝน ใบไม้ร่วง พร้อมดวงอาทิตย์และดวงจันทร์บนท้องฟ้า"
+      },
+      {
+        title: "🔬 แท็บหลักฟิสิกส์แห่งฤดูกาล",
+        desc: "อ่านหลักวิทยาศาสตร์เบื้องหลังทุกสิ่งที่คุณเพิ่งทดลองเล่น — ทำไมมุมเอียง (ไม่ใช่ระยะทาง!) จึงเป็นสาเหตุของฤดูกาล"
+      }
+    ],
+    atmosphereTitle: "ทำไมแสงแดดที่พื้นดินจึงอ่อนกว่า?",
+    atmosphereDesc: "แสงอาทิตย์เดินทางมาถึงขอบบนของชั้นบรรยากาศด้วยพลังงานประมาณ 1,361 วัตต์/ตร.ม. แต่ก่อนถึงพื้นดิน อากาศจะดูดกลืนและกระเจิงพลังงานบางส่วนไป ยิ่งดวงอาทิตย์อยู่ต่ำใกล้ขอบฟ้า แสงยิ่งต้องเดินทางผ่านชั้นบรรยากาศเป็นระยะทางไกลขึ้น (นักวิทยาศาสตร์เรียกว่า \"มวลอากาศ\" มากขึ้น) พลังงานที่เหลือถึงพื้นจึงน้อยลงไปอีก นี่คือเหตุผลที่ค่าที่พื้นดินในตัวจำลองต่ำกว่าค่านอกชั้นบรรยากาศเสมอ และเป็นเหตุผลที่แดดยามเช้าตรู่กับยามเย็นรู้สึกอ่อนแรง ตัวจำลองนี้ใช้แบบจำลองท้องฟ้าแจ่มใสอย่างง่าย หากมีเมฆหรือหมอกควันจริง ค่าจะยิ่งต่ำลงอีก",
+    seasons: {
+      Winter: "ฤดูหนาว",
+      Summer: "ฤดูร้อน",
+      Spring: "ฤดูใบไม้ผลิ",
+      Autumn: "ฤดูใบไม้ร่วง",
+      WetHigh: "ฤดูฝน (ดวงอาทิตย์ตั้งฉาก)",
+      DryLow: "ฤดูแล้ง (ดวงอาทิตย์อ้อม)"
+    },
+    weather: {
+      blizzard: "พายุหิมะรุนแรง",
+      snowLight: "หิมะตกเล็กน้อย / แม่คะนิ้ง",
+      extremeHeat: "ร้อนจัดและแห้งแล้ง",
+      tropicalShowers: "ฝนเขตร้อนตกหนัก",
+      passingClouds: "มีเมฆเป็นบางส่วน",
+      scatteredShowers: "ฝนตกกระจาย",
+      pleasantSunny: "ท้องฟ้าสดใส / อากาศดี",
+      clearSky: "ท้องฟ้าโปร่ง"
+    }
+  }
+};
+
+const MONTH_NAMES_EN = [
+  "January", "February", "March", "April", "May", "June", 
+  "July", "August", "September", "October", "November", "December"
+];
+
+const MONTH_NAMES_TH = [
+  "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", 
+  "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
+];
+
+const MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+const getPresets = (lang) => [
+  { 
+    name: lang === 'en' ? "Equator (Quito, Ecuador)" : "เส้นศูนย์สูตร (กีโต, เอกวาดอร์)", 
+    lat: 0, 
+    desc: lang === 'en' 
+      ? "Minimal seasonal temperature variation, double wet/dry seasons." 
+      : "ความผันผวนของอุณหภูมิตามฤดูกาลน้อยมาก มีฤดูฝนและฤดูแล้งสลับกันอย่างละสองครั้ง" 
+  },
+  {
+    name: lang === 'en' ? "Tropical Monsoon (Bangkok, Thailand)" : "เขตร้อนมรสุม (กรุงเทพฯ ประเทศไทย)",
+    lat: 13.8,
+    desc: lang === 'en'
+      ? "Hot all year, with rainy (monsoon) and dry seasons instead of a cold winter."
+      : "อากาศร้อนตลอดปี มีฤดูฝน (มรสุม) สลับกับฤดูแล้ง แทนที่จะมีฤดูหนาวแบบหนาวเย็น"
+  },
+  {
+    name: lang === 'en' ? "Northern Mid-Latitudes (New York, USA)" : "ละติจูดกลางซีกโลกเหนือ (นิวยอร์ก, สหรัฐอเมริกา)",
+    lat: 40.7, 
+    desc: lang === 'en' 
+      ? "Classic four-season climate with hot summers and snowy winters." 
+      : "ภูมิอากาศแบบ 4 ฤดูคลาสสิก หน้าร้อนมีอุณหภูมิสูง และหน้าหนาวมีหิมะตก" 
+  },
+  { 
+    name: lang === 'en' ? "Southern Mid-Latitudes (Sydney, Australia)" : "ละติจูดกลางซีกโลกใต้ (ซิดนีย์, ออสเตรเลีย)", 
+    lat: -33.8, 
+    desc: lang === 'en' 
+      ? "Inverted seasons. Warm, pleasant summers during Northern winters." 
+      : "ฤดูกาลตรงข้ามกับซีกโลกเหนือ หน้าร้อนอบอุ่นสบายในช่วงฤดูหนาวของซีกโลกเหนือ" 
+  },
+  { 
+    name: lang === 'en' ? "Arctic Circle (Svalbard, Norway)" : "อาร์กติกเซอร์เคิล (สฟาลบาร์, นอร์เวย์)", 
+    lat: 78.2, 
+    desc: lang === 'en' 
+      ? "Extreme conditions. Experience Midnight Sun and Polar Night." 
+      : "สภาพอากาศสุดขั้ว สัมผัสปรากฏการณ์พระอาทิตย์เที่ยงคืนและคืนโพลาร์ (มืดมิดตลอด 24 ชั่วโมง)" 
+  },
+  { 
+    name: lang === 'en' ? "South Pole (Amundsen-Scott Station)" : "ขั้วโลกใต้ (สถานีอามุนด์เซน-สกอตต์)", 
+    lat: -90, 
+    desc: lang === 'en' 
+      ? "Extremely cold. Six months of continuous day followed by six months of dark." 
+      : "หนาวจัดเป็นพิเศษ กลางวันยาวนานต่อเนื่อง 6 เดือน สลับด้วยความมืดมิดอีก 6 เดือน" 
+  }
+];
+
+function App() {
+  const [lang, setLang] = useState('en'); // Defaults to English
+  const [latitude, setLatitude] = useState(40.7);
+  const [dayOfYear, setDayOfYear] = useState(172); // Default to June Solstice (~June 21)
+  const [axialTilt, setAxialTilt] = useState(23.5);
+  const [timeOfDay, setTimeOfDay] = useState(12.0); // Decimal hours (0-24)
+  const [isCelsius, setIsCelsius] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playSpeed, setPlaySpeed] = useState(1); // 1 = 1 day per frame, 2 = 5 days, 3 = 10 days
+  const [activeTab, setActiveTab] = useState('simulation'); // 'simulation' | 'science'
+  const [isTimePlaying, setIsTimePlaying] = useState(false);
+  // Help guide: opens automatically on the very first visit (localStorage may be
+  // unavailable when opened as a plain file, so fail closed instead of crashing)
+  const [showHelp, setShowHelp] = useState(() => {
+    try {
+      return !window.localStorage.getItem('somatic-help-seen');
+    } catch (err) {
+      return false;
+    }
+  });
+  const closeHelp = () => {
+    setShowHelp(false);
+    try {
+      window.localStorage.setItem('somatic-help-seen', '1');
+    } catch (err) { /* ignore */ }
+  };
+
+  const t = (key) => TRANSLATIONS[lang][key] || key;
+  const monthNames = lang === 'en' ? MONTH_NAMES_EN : MONTH_NAMES_TH;
+
+  useEffect(() => {
+    let intervalId;
+    if (isPlaying) {
+      const step = playSpeed === 1 ? 1 : playSpeed === 2 ? 3 : 7;
+      intervalId = setInterval(() => {
+        setDayOfYear((prev) => {
+          const next = prev + step;
+          return next > 365 ? next - 365 : next;
+        });
+      }, 50);
+    }
+    return () => clearInterval(intervalId);
+  }, [isPlaying, playSpeed]);
+
+  useEffect(() => {
+    let intervalId;
+    if (isTimePlaying) {
+      intervalId = setInterval(() => {
+        setTimeOfDay((prev) => {
+          const next = prev + 0.25;
+          return next >= 24 ? 0 : next;
+        });
+      }, 50);
+    }
+    return () => clearInterval(intervalId);
+  }, [isTimePlaying]);
+
+  // Convert Day of Year to Month & Day
+  const dateInfo = useMemo(() => {
+    let remainingDays = dayOfYear;
+    let monthIdx = 0;
+    while (monthIdx < 12 && remainingDays > MONTH_DAYS[monthIdx]) {
+      remainingDays -= MONTH_DAYS[monthIdx];
+      monthIdx++;
+    }
+    if (monthIdx === 12) {
+      monthIdx = 11;
+      remainingDays = 31;
+    }
+    return {
+      month: monthNames[monthIdx],
+      day: Math.floor(remainingDays) || 1,
+      monthIndex: monthIdx
+    };
+  }, [dayOfYear, lang]);
+
+  const physics = useMemo(() => {
+    const rad = Math.PI / 180;
+    const dayAngle = (360 / 365) * (dayOfYear - 80) * rad;
+    const declination = axialTilt * Math.sin(dayAngle);
+
+    const latRad = latitude * rad;
+    const decRad = declination * rad;
+
+    let cosHourAngle = -Math.tan(latRad) * Math.tan(decRad);
+    
+    let dayLength = 0;
+    let isPolarDay = false;
+    let isPolarNight = false;
+
+    if (cosHourAngle <= -1) {
+      dayLength = 24;
+      isPolarDay = true;
+    } else if (cosHourAngle >= 1) {
+      dayLength = 0;
+      isPolarNight = true;
+    } else {
+      const hourAngle = Math.acos(Math.max(-1, Math.min(1, cosHourAngle))) / rad;
+      dayLength = (2 * hourAngle) / 15;
+    }
+
+    let maxSolarElevation = 90 - Math.abs(latitude - declination);
+    if (maxSolarElevation < 0) maxSolarElevation = 0;
+
+    const hourAngleCurrent = (timeOfDay - 12) * 15 * rad;
+    let sinElevation = Math.sin(latRad) * Math.sin(decRad) + Math.cos(latRad) * Math.cos(decRad) * Math.cos(hourAngleCurrent);
+    
+    // Avoid precision errors producing NaN (Clamped trig input)
+    // trueSolarElevation keeps its sign (negative = sun below the horizon) so the
+    // landscape can render dusk, dawn, and night skies smoothly.
+    const trueSolarElevation = Math.asin(Math.max(-1, Math.min(1, sinElevation))) / rad;
+    const currentSolarElevation = Math.max(0, trueSolarElevation);
+
+    const rawInsolation = 1361 * Math.sin(currentSolarElevation * rad);
+    const solarIntensity = Math.max(0, rawInsolation); // Top-of-atmosphere (TOA) flux
+
+    // Simple clear-sky atmosphere model: the lower the sun, the longer the light's
+    // path through the air ("air mass"), and the more energy is absorbed/scattered.
+    // Air mass via Kasten & Young (1989); transmittance ≈ 0.7^(AM^0.678).
+    let surfaceIntensity = 0;
+    if (currentSolarElevation > 0) {
+      const airMass = 1 / (
+        Math.sin(currentSolarElevation * rad) +
+        0.50572 * Math.pow(currentSolarElevation + 6.07995, -1.6364)
+      );
+      surfaceIntensity = solarIntensity * Math.pow(0.7, Math.pow(airMass, 0.678));
+    }
+
+    const dailyInsolationFactor = (dayLength / 24) * Math.sin(maxSolarElevation * rad);
+
+    const laggedDayAngle = (360 / 365) * (dayOfYear - 110) * rad; 
+    const laggedDeclination = axialTilt * Math.sin(laggedDayAngle);
+    
+    const equatorTemp = 28; 
+    const poleTemp = -35; 
+    const latFactor = Math.cos(latRad); 
+    
+    let baseTemp = poleTemp + (equatorTemp - poleTemp) * Math.pow(latFactor, 1.5);
+    const seasonAmplitude = 25 * (1 - latFactor * 0.4); 
+    const seasonalSwing = (laggedDeclination / axialTilt) * seasonAmplitude * (latitude >= 0 ? 1 : -1);
+    // Day/night temperature swing shrinks toward the poles (latFactor = cos(latitude))
+    const diurnalSwing = 8 * latFactor * Math.sin(((timeOfDay - 14) / 24) * 2 * Math.PI);
+
+    let currentTemp = baseTemp + seasonalSwing + diurnalSwing;
+    currentTemp = Math.max(-89.2, Math.min(58, currentTemp)); 
+
+    // Seeded Weather state key (Uses a seasonal sine wave instead of Math.random to avoid flickering)
+    const seed = Math.sin(dayOfYear * rad) + Math.cos(latitude * rad);
+    let weatherKey = "clearSky";
+    let icon = "sun";
+    
+    if (currentTemp < 0) {
+      if (Math.abs(latitude) > 60 && currentTemp < -15) {
+        weatherKey = "blizzard";
+        icon = "snow-heavy";
+      } else {
+        weatherKey = "snowLight";
+        icon = "snow";
+      }
+    } else if (currentTemp > 35) {
+      weatherKey = "extremeHeat";
+      icon = "heat";
+    } else {
+      const isEquatorialRainy = Math.abs(latitude) < 10;
+      // Monsoon rains come when the sun stands high over YOUR hemisphere (wet
+      // season), not at both solstices — so Bangkok is rainy in June, dry in December.
+      const towardSunDec = latitude >= 0 ? declination : -declination;
+      const isMonsoonSeason = isEquatorialRainy || (Math.abs(latitude) < 25 && towardSunDec > 15);
+      
+      if (isMonsoonSeason) {
+        weatherKey = "tropicalShowers";
+        icon = "rain-heavy";
+      } else if (seed > 0.6) {
+        weatherKey = "passingClouds";
+        icon = "cloudy";
+      } else if (seed < -0.8) {
+        weatherKey = "scatteredShowers";
+        icon = "rain";
+      } else {
+        weatherKey = "pleasantSunny";
+        icon = "clear";
+      }
+    }
+
+    return {
+      declination,
+      dayLength,
+      isPolarDay,
+      isPolarNight,
+      maxSolarElevation,
+      currentSolarElevation,
+      trueSolarElevation,
+      solarIntensity,
+      surfaceIntensity,
+      dailyInsolationFactor,
+      currentTemp,
+      weather: TRANSLATIONS[lang].weather[weatherKey],
+      icon
+    };
+  }, [latitude, dayOfYear, axialTilt, timeOfDay, lang]);
+
+  // Helper to convert Temp
+  const formatTemp = (celsius) => {
+    if (isCelsius) {
+      return `${celsius.toFixed(1)}°C`;
+    } else {
+      const fahrenheit = (celsius * 9) / 5 + 32;
+      return `${fahrenheit.toFixed(1)}°F`;
+    }
+  };
+
+  // Month-based season for a whole hemisphere (also drives the globe's colored bands)
+  const hemisphereSeasonKey = (isNorth) => {
+    const month = dateInfo.monthIndex;
+    if (month >= 11 || month <= 1) {
+      return isNorth ? "Winter" : "Summer";
+    } else if (month >= 2 && month <= 4) {
+      return isNorth ? "Spring" : "Autumn";
+    } else if (month >= 5 && month <= 7) {
+      return isNorth ? "Summer" : "Winter";
+    } else {
+      return isNorth ? "Autumn" : "Spring";
+    }
+  };
+
+  // Determine season label based on latitude and month
+  const getSeasonKey = () => {
+    const isNorth = latitude >= 0;
+
+    if (Math.abs(latitude) < 15) {
+      const decRatio = physics.declination;
+      if (isNorth) {
+        return decRatio > 8 ? "WetHigh" : "DryLow";
+      } else {
+        return decRatio < -8 ? "WetHigh" : "DryLow";
+      }
+    }
+
+    return hemisphereSeasonKey(isNorth);
+  };
+
+  const activeSeasonKey = getSeasonKey();
+  const seasonLabel = TRANSLATIONS[lang].seasons[activeSeasonKey];
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-teal-500 selection:text-white">
+      {/* Global keyframes for ambient motion (CSS-only — cheap on the GPU). */}
+      <style>{`
+        @keyframes drift { 0%, 100% { transform: translateX(-2.5%); } 50% { transform: translateX(2.5%); } }
+        @keyframes fallSnow {
+          0%   { transform: translateY(-20px) translateX(0); opacity: 0; }
+          8%   { opacity: 0.95; }
+          25%  { transform: translateY(70px) translateX(16px); }
+          50%  { transform: translateY(160px) translateX(-12px); opacity: 0.95; }
+          75%  { transform: translateY(250px) translateX(10px); }
+          100% { transform: translateY(340px) translateX(-6px); opacity: 0.4; }
+        }
+        @keyframes fallLeaf {
+          0%   { transform: translateY(-20px) translateX(0) rotate(0deg); opacity: 0; }
+          10%  { opacity: 0.9; }
+          60%  { transform: translateY(180px) translateX(24px) rotate(200deg); opacity: 0.9; }
+          100% { transform: translateY(330px) translateX(-8px) rotate(340deg); opacity: 0; }
+        }
+        @keyframes rainFall {
+          0%   { transform: translate(0, -30px) rotate(9deg); opacity: 0; }
+          15%  { opacity: 0.85; }
+          100% { transform: translate(-48px, 340px) rotate(9deg); opacity: 0.3; }
+        }
+        @keyframes floatUp {
+          0%   { transform: translateY(0) translateX(0); opacity: 0; }
+          25%  { opacity: 0.8; }
+          100% { transform: translateY(-130px) translateX(14px); opacity: 0; }
+        }
+      `}</style>
+      {/* Header */}
+      <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-40 px-4 py-3 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-tr from-amber-500 to-orange-600 rounded-xl shadow-lg shadow-orange-500/20">
+            <Sun className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-amber-400 via-orange-400 to-teal-400 bg-clip-text text-transparent">
+              {t('title')}
+            </h1>
+            <p className="text-xs text-slate-400">{t('subtitle')}</p>
+          </div>
+        </div>
+
+        {/* Global Controls: Tabs & Language Selector */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            onClick={() => setShowHelp(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-800 bg-slate-950/80 hover:border-slate-700 hover:bg-slate-900 transition-all text-xs font-semibold text-slate-300"
+            title="Help / วิธีใช้"
+          >
+            <HelpCircle className="w-4 h-4 text-amber-400" />
+            <span>{t('helpButton')}</span>
+          </button>
+
+          <button
+            onClick={() => setLang(lang === 'en' ? 'th' : 'en')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-800 bg-slate-950/80 hover:border-slate-700 hover:bg-slate-900 transition-all text-xs font-semibold text-slate-300"
+            title="Switch Language / สลับภาษา"
+          >
+            <Languages className="w-4 h-4 text-teal-400" />
+            <span>{lang === 'en' ? 'TH' : 'EN'}</span>
+          </button>
+
+          <div className="flex bg-slate-950/80 p-1 rounded-lg border border-slate-800 text-sm">
+            <button
+              onClick={() => setActiveTab('simulation')}
+              className={`px-4 py-1.5 rounded-md font-medium transition-all ${
+                activeTab === 'simulation' 
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow' 
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              {t('tabSimulation')}
+            </button>
+            <button
+              onClick={() => setActiveTab('science')}
+              className={`px-4 py-1.5 rounded-md font-medium transition-all ${
+                activeTab === 'science' 
+                  ? 'bg-gradient-to-r from-teal-500 to-emerald-500 text-white shadow' 
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              {t('tabScience')}
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Container */}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6">
+        {activeTab === 'simulation' ? (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            {/* Left Controls Column (4 cols) */}
+            <section className="lg:col-span-4 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-5">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <span className="font-semibold text-slate-200 flex items-center gap-2">
+                  <Sliders className="w-4 h-4 text-orange-400" /> {t('controlDesk')}
+                </span>
+                <button 
+                  onClick={() => {
+                    setLatitude(40.7);
+                    setDayOfYear(172);
+                    setAxialTilt(23.5);
+                    setTimeOfDay(12);
+                    setIsPlaying(false);
+                    setIsTimePlaying(false);
+                  }}
+                  className="text-xs text-slate-400 hover:text-orange-400 flex items-center gap-1 transition"
+                  title="Reset Simulator Settings"
+                >
+                  <RotateCcw className="w-3 h-3" /> {t('reset')}
+                </button>
+              </div>
+
+              {/* Seasonal Globe: live pseudo-3D view synced to every slider */}
+              <div>
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2 flex items-center gap-1">
+                  <Globe className="w-3.5 h-3.5 text-teal-400" /> {t('globeLabel')}
+                </label>
+                <p className="text-[10px] text-slate-400 mb-2">{t('globeInstruction')}</p>
+                <SeasonGlobe
+                  latitude={latitude}
+                  onSelectLatitude={setLatitude}
+                  declination={physics.declination}
+                  axialTilt={axialTilt}
+                  timeOfDay={timeOfDay}
+                  northSeason={hemisphereSeasonKey(true)}
+                  southSeason={hemisphereSeasonKey(false)}
+                  legendSunlight={t('legendSunlight')}
+                  legendNight={t('legendNight')}
+                />
+              </div>
+
+              {/* Presets Grid */}
+              <div>
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2 flex items-center gap-1">
+                  <MapPin className="w-3.5 h-3.5 text-rose-500" /> {t('locationPresets')}
+                </label>
+                <div className="grid grid-cols-1 gap-2">
+                  {getPresets(lang).map((preset, idx) => {
+                    const isSelected = Math.abs(latitude - preset.lat) < 0.5;
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => setLatitude(preset.lat)}
+                        className={`text-left p-2.5 rounded-xl border text-xs transition-all ${
+                          isSelected 
+                            ? 'bg-teal-950/40 border-teal-500/50 text-teal-300' 
+                            : 'bg-slate-950/40 border-slate-800 text-slate-300 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="font-semibold flex justify-between">
+                          <span>{preset.name}</span>
+                          <span className="text-slate-400">{preset.lat}°</span>
+                        </div>
+                        <p className="text-[10px] text-slate-400/80 mt-1 leading-tight">{preset.desc}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Sliders Container */}
+              <div className="flex flex-col gap-5 border-t border-slate-800/80 pt-4">
+                {/* Latitude Slider */}
+                <div>
+                  <div className="flex justify-between text-xs font-semibold mb-2">
+                    <span className="text-slate-300 flex items-center gap-1.5">
+                      <Globe className="w-4 h-4 text-sky-400" /> {t('latitude')}
+                    </span>
+                    <span className="text-teal-400 bg-teal-950/50 px-2 py-0.5 rounded border border-teal-800/40 font-mono">
+                      {latitude.toFixed(1)}° {latitude >= 0 ? t('north') : t('south')}
+                    </span>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="-90" 
+                    max="90" 
+                    step="0.5"
+                    value={latitude} 
+                    onChange={(e) => setLatitude(parseFloat(e.target.value))}
+                    className="w-full accent-teal-500 h-1.5 bg-slate-950 rounded-lg appearance-none cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[10px] text-slate-500 mt-1">
+                    <span>90°S ({t('southPole')})</span>
+                    <span>0° ({t('equator')})</span>
+                    <span>90°N ({t('northPole')})</span>
+                  </div>
+                </div>
+
+                {/* Day of Year (Season) Slider */}
+                <div>
+                  <div className="flex justify-between text-xs font-semibold mb-2">
+                    <span className="text-slate-300 flex items-center gap-1.5">
+                      <Calendar className="w-4 h-4 text-amber-400" /> {t('calendarDate')}
+                    </span>
+                    <span className="text-amber-400 bg-amber-950/50 px-2 py-0.5 rounded border border-amber-800/40 font-mono">
+                      {dateInfo.month} {dateInfo.day} ({t('dayOfYr')} {dayOfYear})
+                    </span>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="1" 
+                    max="365" 
+                    step="1"
+                    value={dayOfYear} 
+                    onChange={(e) => setDayOfYear(parseInt(e.target.value))}
+                    className="w-full accent-amber-500 h-1.5 bg-slate-950 rounded-lg appearance-none cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[10px] text-slate-500 mt-1">
+                    <span>{lang === 'en' ? 'Jan 1' : '1 ม.ค.'}</span>
+                    <span className="text-amber-500/80">{t('solsticeRef')}</span>
+                    <span>{lang === 'en' ? 'Dec 31' : '31 ธ.ค.'}</span>
+                  </div>
+
+                  {/* Play Controls for Seasons */}
+                  <div className="mt-3 flex items-center gap-2">
+                    <button
+                      onClick={() => setIsPlaying(!isPlaying)}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition ${
+                        isPlaying 
+                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30 hover:bg-rose-500/30' 
+                          : 'bg-amber-500 text-slate-950 hover:bg-amber-400'
+                      }`}
+                    >
+                      {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+                      {isPlaying ? t('pauseOrbit') : t('playOrbit')}
+                    </button>
+                    {isPlaying && (
+                      <div className="flex border border-slate-800 rounded-lg p-0.5 bg-slate-950 text-[10px]">
+                        {[1, 2, 3].map((s) => (
+                          <button
+                            key={s}
+                            onClick={() => setPlaySpeed(s)}
+                            className={`px-2 py-1 rounded transition ${
+                              playSpeed === s ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400'
+                            }`}
+                          >
+                            {s}x
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Time of Day Slider */}
+                <div>
+                  <div className="flex justify-between text-xs font-semibold mb-2">
+                    <span className="text-slate-300 flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-purple-400" /> {t('timeOfDay')}
+                    </span>
+                    <span className="text-purple-400 bg-purple-950/50 px-2 py-0.5 rounded border border-purple-800/40 font-mono">
+                      {Math.floor(timeOfDay).toString().padStart(2, '0')}:
+                      {Math.round((timeOfDay % 1) * 60).toString().padStart(2, '0')}
+                    </span>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="23.9" 
+                    step="0.1"
+                    value={timeOfDay} 
+                    onChange={(e) => setTimeOfDay(parseFloat(e.target.value))}
+                    className="w-full accent-purple-500 h-1.5 bg-slate-950 rounded-lg appearance-none cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[10px] text-slate-500 mt-1">
+                    <span>{t('midnight')}</span>
+                    <span>{t('noon')}</span>
+                    <span>{t('midnight')}</span>
+                  </div>
+                  {/* Play Controls for Daily Rotation */}
+                  <div className="mt-3">
+                    <button
+                      onClick={() => setIsTimePlaying(!isTimePlaying)}
+                      className={`w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition ${
+                        isTimePlaying 
+                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30 hover:bg-rose-500/30' 
+                          : 'bg-purple-600/30 text-purple-300 border border-purple-500/30 hover:bg-purple-600/50'
+                      }`}
+                    >
+                      {isTimePlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+                      {isTimePlaying ? t('pauseRotation') : t('playRotation')}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Axial Tilt "What If" Variable */}
+                <div>
+                  <div className="flex justify-between text-xs font-semibold mb-2">
+                    <span className="text-slate-300 flex items-center gap-1.5" title="The tilt angle of Earth's axis relative to its orbital plane.">
+                      <Compass className="w-4 h-4 text-emerald-400" /> {t('axialTiltLabel')}
+                    </span>
+                    <span className="text-emerald-400 bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-800/40 font-mono">
+                      {axialTilt.toFixed(1)}°
+                    </span>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="45" 
+                    step="0.5"
+                    value={axialTilt} 
+                    onChange={(e) => setAxialTilt(parseFloat(e.target.value))}
+                    className="w-full accent-emerald-500 h-1.5 bg-slate-950 rounded-lg appearance-none cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[10px] text-slate-500 mt-1">
+                    <span>{t('noSeasons')}</span>
+                    <span className="text-emerald-500/80">{t('earthReal')}</span>
+                    <span>{t('extremeTilt')}</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Right Display Column (8 cols) */}
+            <div className="lg:col-span-8 flex flex-col gap-6">
+              
+              {/* Telemetry Dashboard (Grid of Metrics) */}
+              <section className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {/* Temp Card */}
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between hover:border-slate-700 transition">
+                  <div className="flex justify-between items-start">
+                    <span className="text-slate-400 text-xs font-semibold">{t('temperature')}</span>
+                    <button 
+                      onClick={() => setIsCelsius(!isCelsius)}
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 hover:text-white transition"
+                    >
+                      {isCelsius ? "→ °F" : "→ °C"}
+                    </button>
+                  </div>
+                  <div className="mt-2 flex items-baseline gap-1.5">
+                    <span className="text-2xl font-black text-slate-100 tracking-tight">
+                      {formatTemp(physics.currentTemp)}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-500 flex items-center gap-1 mt-1">
+                    {physics.currentTemp > 25 ? (
+                      <Flame className="w-3.5 h-3.5 text-orange-500" />
+                    ) : physics.currentTemp < 0 ? (
+                      <Snowflake className="w-3.5 h-3.5 text-sky-400 animate-pulse" />
+                    ) : (
+                      <Thermometer className="w-3.5 h-3.5 text-teal-400" />
+                    )}
+                    {t('approxFeel')}
+                  </span>
+                </div>
+
+                {/* Day Length Card */}
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between hover:border-slate-700 transition">
+                  <span className="text-slate-400 text-xs font-semibold">{t('dayLength')}</span>
+                  <div className="mt-2">
+                    <span className="text-2xl font-black text-slate-100 tracking-tight">
+                      {physics.dayLength.toFixed(1)} {lang === 'en' ? 'hrs' : 'ชม.'}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-500 mt-1">
+                    {physics.isPolarDay && t('polarDayLabel')}
+                    {physics.isPolarNight && t('polarNightLabel')}
+                    {!physics.isPolarDay && !physics.isPolarNight && `${(24 - physics.dayLength).toFixed(1)} ${t('hrsOfNight')}`}
+                  </span>
+                </div>
+
+                {/* Solar Elevation Angle */}
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between hover:border-slate-700 transition">
+                  <span className="text-slate-400 text-xs font-semibold">{t('sunAltitude')}</span>
+                  <div className="mt-2">
+                    <span className="text-2xl font-black text-slate-100 tracking-tight">
+                      {physics.currentSolarElevation.toFixed(1)}°
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-500 mt-1">
+                    {t('maxDailyElev')}: {physics.maxSolarElevation.toFixed(1)}°
+                  </span>
+                </div>
+
+                {/* Solar Intensity */}
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between hover:border-slate-700 transition">
+                  <span className="text-slate-400 text-xs font-semibold">{t('solarIntensity')}</span>
+                  <div className="mt-2">
+                    <span className="text-2xl font-black text-slate-100 tracking-tight">
+                      {Math.round(physics.surfaceIntensity)} <span className="text-xs font-normal text-slate-400">{lang === 'en' ? 'W/m²' : 'วัตต์/ตร.ม.'}</span>
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-500 mt-1">
+                    {t('incidentFlux')} · {t('toaLabel')}: {Math.round(physics.solarIntensity)}
+                  </span>
+                </div>
+              </section>
+
+              {/* Dynamic Landscape Visualizer */}
+              <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-4 relative overflow-hidden">
+                <div className="flex justify-between items-center">
+                  <h3 className="font-semibold text-slate-200 flex items-center gap-1.5">
+                    <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                    {t('landscapeTitle')} ({seasonLabel})
+                  </h3>
+                  <div className="flex items-center gap-2 bg-slate-950 px-3 py-1 rounded-full text-xs font-semibold text-slate-400 border border-slate-800">
+                    <span className="text-slate-200">{physics.weather}</span>
+                  </div>
+                </div>
+
+                {/* Render Landscape SVG depending on season and day parameters */}
+                <LandscapeView
+                  seasonKey={activeSeasonKey}
+                  translatedSeason={seasonLabel}
+                  temp={physics.currentTemp}
+                  time={timeOfDay}
+                  latitude={latitude}
+                  declination={physics.declination}
+                  weatherIcon={physics.icon}
+                  solarElevation={physics.trueSolarElevation}
+                  dayLength={physics.dayLength}
+                />
+              </section>
+
+              {/* Astronomical Orrery & Physics Panels */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* Orrery Visual (Orbital plane / solar angle) */}
+                <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+                  <h3 className="font-semibold text-slate-200 flex items-center gap-1.5">
+                    <Compass className="w-4 h-4 text-sky-400" /> {t('earthSunRel')}
+                  </h3>
+                  
+                  <div className="relative w-full h-56 bg-slate-950 rounded-xl border border-slate-800/80 flex items-center justify-center overflow-hidden">
+                    {/* Background cosmic grid / stars */}
+                    <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px] opacity-40" />
+                    
+                    <SolarEarthAngleVisual 
+                      latitude={latitude} 
+                      declination={physics.declination} 
+                      tilt={axialTilt}
+                      lang={lang}
+                    />
+                  </div>
+                  <div className="text-[11px] text-slate-400 space-y-1">
+                    <p className="flex justify-between">
+                      <span>{t('solarDeclination')}:</span>
+                      <strong className="text-slate-200">{physics.declination.toFixed(1)}°</strong>
+                    </p>
+                    <p className="flex justify-between">
+                      <span>{t('polarThreshold')}:</span>
+                      <strong className="text-slate-200">{(90 - Math.abs(axialTilt)).toFixed(1)}° N/S</strong>
+                    </p>
+                  </div>
+                </section>
+
+                {/* Detailed Astronomy Stats / Metrics */}
+                <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between gap-4">
+                  <h3 className="font-semibold text-slate-200 flex items-center gap-1.5">
+                    <Info className="w-4 h-4 text-teal-400" /> {t('astronomicalInsights')}
+                  </h3>
+                  
+                  <div className="space-y-3.5 text-xs text-slate-300">
+                    <div className="p-3 bg-slate-950 rounded-xl border border-slate-800/60 leading-relaxed">
+                      {Math.abs(latitude) < 23.5 ? (
+                        <p>{t('tropicsInfo')}</p>
+                      ) : Math.abs(latitude) > 66.5 ? (
+                        <p>{t('polarInfo')}</p>
+                      ) : (
+                        <p>{t('temperateInfo')}</p>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 text-center">
+                      <div className="p-2.5 bg-slate-950 rounded-lg border border-slate-800">
+                        <span className="text-[10px] text-slate-500 uppercase tracking-wider block">{t('solsticeProgress')}</span>
+                        <span className="font-mono text-xs text-slate-200 font-bold block mt-1">
+                          {dayOfYear > 172 && dayOfYear < 355 ? t('toDecSolstice') : t('toJunSolstice')}
+                        </span>
+                      </div>
+                      <div className="p-2.5 bg-slate-950 rounded-lg border border-slate-800">
+                        <span className="text-[10px] text-slate-500 uppercase tracking-wider block">{t('radiativeFlux')}</span>
+                        <span className="font-mono text-sm text-slate-200 font-bold block mt-1">
+                          {(physics.dailyInsolationFactor * 100).toFixed(0)}% {t('maxCap')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-[10px] text-slate-500 leading-normal border-t border-slate-800 pt-3">
+                    {t('sandboxTip')}
+                  </p>
+                </section>
+              </div>
+
+            </div>
+          </div>
+        ) : (
+          /* Science Explainer View */
+          <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8 shadow-xl flex flex-col gap-6 max-w-4xl mx-auto">
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-teal-400 to-emerald-400 bg-clip-text text-transparent">
+              {t('scienceTitle')}
+            </h2>
+            
+            <div className="space-y-6 text-slate-300 leading-relaxed">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-100 flex items-center gap-2 mb-2">
+                    <span className="w-1.5 h-4 bg-teal-500 rounded-full" /> {t('scienceMythVsReality')}
+                  </h3>
+                  <p className="text-sm">
+                    <strong>{lang === 'en' ? 'Myth:' : 'ความเชื่อผิด ๆ:'}</strong> {t('mythText')}
+                  </p>
+                  <p className="text-sm mt-2">
+                    <strong>{lang === 'en' ? 'Reality:' : 'ความเป็นจริง:'}</strong> {t('realityText')}
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-100 flex items-center gap-2 mb-2">
+                    <span className="w-1.5 h-4 bg-teal-500 rounded-full" /> {t('scienceMechanisms')}
+                  </h3>
+                  <ol className="list-decimal pl-5 text-sm space-y-2">
+                    <li>
+                      <strong>{t('mechanism1Title')}</strong> {t('mechanism1Desc')}
+                    </li>
+                    <li>
+                      <strong>{t('mechanism2Title')}</strong> {t('mechanism2Desc')}
+                    </li>
+                  </ol>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-800 pt-6">
+                <h3 className="text-lg font-semibold text-slate-100 mb-3">{t('mathProfileTitle')}</h3>
+                <p className="text-sm">
+                  {t('mathFormulaDesc')}
+                </p>
+                <div className="my-4 p-4 bg-slate-950 rounded-xl border border-slate-800 text-center font-mono text-teal-300 text-xs md:text-sm">
+                  {t('mathFormula')}
+                </div>
+                <p className="text-sm">
+                  {t('mathDeclinationDesc')}
+                </p>
+              </div>
+
+              <div className="border-t border-slate-800 pt-6">
+                <h3 className="text-lg font-semibold text-slate-100 flex items-center gap-2 mb-2">
+                  <span className="w-1.5 h-4 bg-amber-500 rounded-full" /> {t('atmosphereTitle')}
+                </h3>
+                <p className="text-sm">
+                  {t('atmosphereDesc')}
+                </p>
+              </div>
+
+              <div className="border-t border-slate-800 pt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 text-center">
+                  <h4 className="font-bold text-amber-400">{t('juneSolsticeTitle')}</h4>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {t('juneSolsticeDesc')}
+                  </p>
+                </div>
+                <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 text-center">
+                  <h4 className="font-bold text-teal-400">{t('equinoxTitle')}</h4>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {t('equinoxDesc')}
+                  </p>
+                </div>
+                <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 text-center">
+                  <h4 className="font-bold text-blue-400">{t('decSolsticeTitle')}</h4>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {t('decSolsticeDesc')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-slate-800 bg-slate-900/40 py-6 text-center text-xs text-slate-500">
+        <p>{t('footerText')}</p>
+      </footer>
+
+      {/* Help / onboarding guide (auto-opens on first visit) */}
+      {showHelp && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={closeHelp}
+        >
+          <div
+            className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-6 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={closeHelp}
+              className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+              title="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <h2 className="text-xl font-bold bg-gradient-to-r from-amber-400 to-teal-400 bg-clip-text text-transparent flex items-center gap-2 pr-8">
+              <HelpCircle className="w-5 h-5 text-amber-400 shrink-0" /> {t('helpTitle')}
+            </h2>
+            <p className="text-xs text-slate-400 mt-2 leading-relaxed">{t('helpIntro')}</p>
+
+            <div className="mt-4 space-y-3">
+              {TRANSLATIONS[lang].helpItems.map((item, idx) => (
+                <div key={idx} className="p-3 bg-slate-950 rounded-xl border border-slate-800">
+                  <h3 className="text-sm font-semibold text-slate-100">{item.title}</h3>
+                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={closeHelp}
+              className="mt-5 w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold hover:from-amber-400 hover:to-orange-400 transition shadow-lg shadow-orange-500/20"
+            >
+              {t('helpClose')}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Very coarse continent outlines as [longitude, latitude] rings — schematic shapes
+// so students can recognise "their" part of the world on the globe. Not survey data!
+const CONTINENTS = [
+  // North America
+  [[-166, 66], [-140, 70], [-110, 73], [-85, 70], [-75, 60], [-55, 50], [-65, 45], [-70, 42], [-76, 35], [-81, 26], [-90, 29], [-97, 26], [-105, 20], [-88, 13], [-83, 9], [-92, 15], [-105, 23], [-117, 33], [-125, 40], [-125, 49], [-140, 60], [-152, 60]],
+  // South America
+  [[-75, 10], [-62, 10], [-52, 4], [-35, -6], [-39, -14], [-48, -26], [-57, -34], [-65, -40], [-68, -50], [-72, -54], [-71, -45], [-73, -35], [-70, -20], [-77, -10], [-80, 0]],
+  // Africa
+  [[-6, 35], [10, 37], [20, 33], [32, 31], [43, 11], [51, 10], [40, -5], [35, -20], [30, -30], [20, -35], [15, -30], [12, -18], [9, -1], [-8, 5], [-17, 15], [-17, 21]],
+  // Eurasia (Europe + Asia, with the Indian & Indochinese peninsulas)
+  [[-10, 36], [-8, 44], [0, 47], [8, 54], [5, 60], [12, 65], [25, 71], [45, 68], [70, 72], [100, 76], [130, 72], [160, 68], [178, 65], [160, 60], [142, 52], [130, 42], [122, 37], [120, 26], [108, 15], [105, 9], [100, 6], [98, 12], [96, 16], [88, 22], [85, 18], [80, 9], [73, 18], [67, 24], [60, 25], [57, 20], [50, 13], [43, 12], [42, 16], [34, 28], [26, 37], [18, 40], [10, 44], [0, 43]],
+  // Australia
+  [[114, -22], [122, -14], [132, -11], [142, -11], [146, -15], [149, -21], [153, -28], [150, -37], [140, -38], [131, -32], [124, -33], [114, -35], [113, -26]],
+  // Greenland
+  [[-45, 60], [-30, 68], [-20, 70], [-25, 78], [-40, 80], [-55, 76], [-53, 70]]
+];
+
+function SeasonGlobe({
+  latitude,
+  onSelectLatitude,
+  declination,
+  axialTilt,
+  timeOfDay,
+  northSeason,
+  southSeason,
+  legendSunlight,
+  legendNight
+}) {
+  const containerRef = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const rad = Math.PI / 180;
+
+  // Orthographic side view: sun fixed on the left, globe leaning with the season.
+  const R = 92;           // globe radius (viewBox units)
+  const CX = 140, CY = 115; // globe center in the 260x230 viewBox
+
+  const SEASON_BAND_COLORS = {
+    Winter: "#cbd5e1", // icy slate
+    Spring: "#4ade80", // fresh green
+    Summer: "#15803d", // deep green
+    Autumn: "#d97706"  // amber
+  };
+
+  // Season colors fade toward neutral green as tilt approaches 0 (no tilt = no seasons)
+  const seasonStrength = Math.min(1, axialTilt / 23.5);
+
+  // Latitude circle -> vertical position on the disk (orthographic projection)
+  const yOf = (latDeg) => -R * Math.sin(latDeg * rad);
+
+  const handleInteraction = (e) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    // Pixel coords -> viewBox coords relative to the globe center
+    const vx = ((clientX - rect.left) / rect.width) * 260 - CX;
+    const vy = ((clientY - rect.top) / rect.height) * 230 - CY;
+    // Undo the seasonal lean so the drag lands on the true latitude
+    const a = -declination * rad;
+    const yLocal = -vx * Math.sin(a) + vy * Math.cos(a);
+    const lat = Math.asin(Math.max(-1, Math.min(1, -yLocal / R))) / rad;
+    onSelectLatitude(Math.round(Math.max(-90, Math.min(90, lat)) * 2) / 2);
+  };
+
+  const handleMouseDown = (e) => {
+    setIsDragging(true);
+    handleInteraction(e);
+  };
+
+  const handleMouseMove = (e) => {
+    if (isDragging) {
+      handleInteraction(e);
+    }
+  };
+
+  const handleMouseUpOrLeave = () => {
+    setIsDragging(false);
+  };
+
+  // A few meridians that slide with the time of day — a cheap "spinning Earth" feel
+  const spinDeg = timeOfDay * 15;
+  const meridianRx = [0, 45, 90, 135].map((base) => {
+    const lon = (base + spinDeg) % 180;
+    return R * Math.abs(Math.sin(lon * rad));
+  });
+
+  // Orthographic projection of the continent outlines, spinning with the time of day.
+  // Back-hemisphere vertices are squashed onto the limb (rim) instead of dropped, so
+  // every shape deforms continuously while the globe spins — no popping or fold-over.
+  const landPaths = useMemo(() => {
+    const paths = [];
+    for (const ring of CONTINENTS) {
+      let anyVisible = false;
+      const pts = ring.map(([lon, lat]) => {
+        const lonR = (lon + spinDeg) * rad;
+        const latR = lat * rad;
+        let x = R * Math.cos(latR) * Math.sin(lonR);
+        let y = -R * Math.sin(latR);
+        if (Math.cos(latR) * Math.cos(lonR) > 0) {
+          anyVisible = true;
+        } else {
+          // Behind the globe: push the point out to the rim along its own direction
+          const len = Math.sqrt(x * x + y * y) || 1;
+          x = (x / len) * R;
+          y = (y / len) * R;
+        }
+        return x.toFixed(1) + ',' + y.toFixed(1);
+      });
+      if (anyVisible) paths.push('M ' + pts.join(' L ') + ' Z');
+    }
+    return paths.join(' ');
+  }, [spinDeg]);
+
+  const markerY = yOf(latitude);
+  const markerHalfWidth = Math.sqrt(Math.max(0, R * R - markerY * markerY));
+
+  // Climate bands, pole to pole. Temperate bands carry the hemisphere's season color.
+  const bands = [
+    { from: 90, to: 66.5, fill: "#e2e8f0", seasonal: false },                      // N polar cap
+    { from: 66.5, to: 23.5, fill: SEASON_BAND_COLORS[northSeason], seasonal: true },
+    { from: 23.5, to: -23.5, fill: "#16a34a", seasonal: false },                   // tropics
+    { from: -23.5, to: -66.5, fill: SEASON_BAND_COLORS[southSeason], seasonal: true },
+    { from: -66.5, to: -90, fill: "#e2e8f0", seasonal: false }                     // S polar cap
+  ];
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative w-full bg-slate-950 rounded-xl border border-slate-800 overflow-hidden cursor-ns-resize select-none"
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUpOrLeave}
+      onMouseLeave={handleMouseUpOrLeave}
+      onTouchStart={handleMouseDown}
+      onTouchMove={handleMouseMove}
+      onTouchEnd={handleMouseUpOrLeave}
+    >
+      {/* Star speckle backdrop */}
+      <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:18px_18px] opacity-40" />
+
+      <svg className="w-full" viewBox="0 0 260 230">
+        <defs>
+          <clipPath id="seasonGlobeClip">
+            <circle cx="0" cy="0" r={R} />
+          </clipPath>
+          <radialGradient id="seasonGlobeSunGlow">
+            <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.85" />
+            <stop offset="100%" stopColor="#fbbf24" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+
+        {/* Sun on the left with a soft pulsing glow */}
+        <g className="animate-pulse">
+          <circle cx="8" cy={CY} r="30" fill="url(#seasonGlobeSunGlow)" />
+        </g>
+        <circle cx="8" cy={CY} r="12" fill="#fcd34d" />
+        {[-26, 0, 26].map((dy) => (
+          <line
+            key={dy}
+            x1="24"
+            y1={CY + dy}
+            x2={CX - R - 4}
+            y2={CY + dy}
+            stroke="#fbbf24"
+            strokeWidth="1"
+            strokeDasharray="4,4"
+            opacity="0.35"
+          />
+        ))}
+
+        {/* Globe, leaning with the season (lean angle = solar declination) */}
+        <g transform={`translate(${CX}, ${CY}) rotate(${-declination})`}>
+          <circle r={R} fill="#155e75" />
+
+          <g clipPath="url(#seasonGlobeClip)">
+            {/* Neutral base for the temperate bands (what a tilt-less Earth would show) */}
+            {bands.map((band, i) => (
+              <rect
+                key={`base-${i}`}
+                x={-R}
+                y={yOf(band.from)}
+                width={2 * R}
+                height={yOf(band.to) - yOf(band.from)}
+                fill={band.seasonal ? "#059669" : band.fill}
+                opacity="0.92"
+              />
+            ))}
+            {/* Season color overlays fade in as axial tilt grows */}
+            {bands.filter((b) => b.seasonal).map((band, i) => (
+              <rect
+                key={`season-${i}`}
+                x={-R}
+                y={yOf(band.from)}
+                width={2 * R}
+                height={yOf(band.to) - yOf(band.from)}
+                fill={band.fill}
+                opacity={0.92 * seasonStrength}
+                className="transition-opacity duration-500"
+              />
+            ))}
+
+            {/* Continent silhouettes (schematic) — help students find their home region */}
+            {landPaths && (
+              <path d={landPaths} fill="#0f172a" opacity="0.4" stroke="#0f172a" strokeWidth="0.5" strokeLinejoin="round" />
+            )}
+
+            {/* Graticule: equator, tropics, polar circles */}
+            <line x1={-R} y1="0" x2={R} y2="0" stroke="#f59e0b" strokeWidth="1" strokeDasharray="4,3" opacity="0.75" />
+            {[23.5, -23.5].map((l) => (
+              <line key={l} x1={-R} y1={yOf(l)} x2={R} y2={yOf(l)} stroke="#fde68a" strokeWidth="0.75" strokeDasharray="3,3" opacity="0.3" />
+            ))}
+            {[66.5, -66.5].map((l) => (
+              <line key={l} x1={-R} y1={yOf(l)} x2={R} y2={yOf(l)} stroke="#bae6fd" strokeWidth="0.75" strokeDasharray="3,3" opacity="0.35" />
+            ))}
+
+            {/* Sliding meridians (driven by time of day) */}
+            {meridianRx.map((rx, i) =>
+              rx > 2 ? (
+                <ellipse key={i} cx="0" cy="0" rx={rx} ry={R} fill="none" stroke="#0f172a" strokeWidth="0.75" opacity="0.28" />
+              ) : null
+            )}
+
+            {/* Selected latitude line */}
+            <line
+              x1={-markerHalfWidth}
+              y1={markerY}
+              x2={markerHalfWidth}
+              y2={markerY}
+              stroke="#2dd4bf"
+              strokeWidth="1.5"
+              opacity="0.9"
+            />
+          </g>
+
+          {/* Axis of rotation */}
+          <line x1="0" y1={-R - 13} x2="0" y2={R + 13} stroke="#10b981" strokeWidth="2" />
+          <text x="5" y={-R - 5} fill="#10b981" fontSize="9" fontFamily="monospace" fontWeight="bold">N</text>
+          <text x="5" y={R + 12} fill="#10b981" fontSize="9" fontFamily="monospace" fontWeight="bold">S</text>
+
+          {/* "You are here" marker */}
+          <circle cx="0" cy={markerY} r="7" fill="none" stroke="#f43f5e" strokeWidth="1.5" className="animate-pulse" />
+          <circle cx="0" cy={markerY} r="4" fill="#f43f5e" stroke="#ffffff" strokeWidth="1.5" />
+        </g>
+
+        {/* Night side: the half of Earth facing away from the Sun */}
+        <path
+          d={`M ${CX} ${CY - R} A ${R} ${R} 0 0 1 ${CX} ${CY + R} Z`}
+          fill="#020617"
+          opacity="0.6"
+        />
+      </svg>
+
+      {/* Legend */}
+      <div className="absolute bottom-1.5 left-2.5 right-2.5 flex justify-between text-[9px] font-semibold pointer-events-none">
+        <span className="text-amber-300/90">☀ {legendSunlight}</span>
+        <span className="text-slate-400">{legendNight} ☾</span>
+      </div>
+    </div>
+  );
+}
+
+// Linear blend between two colors (accepts "#rrggbb" or "rgb(r, g, b)")
+function parseColor(c) {
+  if (c.startsWith('#')) {
+    return [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)];
+  }
+  return c.match(/\d+/g).map(Number);
+}
+function mixColor(a, b, t) {
+  const ca = parseColor(a), cb = parseColor(b);
+  const ch = (i) => Math.round(ca[i] + (cb[i] - ca[i]) * t);
+  return `rgb(${ch(0)}, ${ch(1)}, ${ch(2)})`;
+}
+
+// Sky color stops keyed on the sun's elevation angle (degrees above the horizon).
+// Interpolating between them gives a perfectly smooth night → dawn → day cycle,
+// and it works at the poles too (midnight sun = bright sky at 00:00).
+const SKY_STOPS = [
+  { e: -18, top: "#020617", mid: "#0f172a", bot: "#1e1b4b" }, // deep night
+  { e: -6,  top: "#1e1b4b", mid: "#4c1d95", bot: "#9a3412" }, // early twilight
+  { e: 0,   top: "#312e81", mid: "#c2410c", bot: "#fbbf24" }, // sun on the horizon
+  { e: 10,  top: "#0c4a6e", mid: "#0284c7", bot: "#fde68a" }, // golden hour
+  { e: 35,  top: "#0ea5e9", mid: "#7dd3fc", bot: "#e0f2fe" }  // full daylight
+];
+
+function LandscapeView({ seasonKey, translatedSeason, temp, time, latitude, declination, weatherIcon, solarElevation, dayLength }) {
+  // --- Sky: continuous gradient from the sun's real elevation ---
+  const e = solarElevation;
+  const skyColors = (() => {
+    if (e <= SKY_STOPS[0].e) return SKY_STOPS[0];
+    if (e >= SKY_STOPS[SKY_STOPS.length - 1].e) return SKY_STOPS[SKY_STOPS.length - 1];
+    for (let i = 0; i < SKY_STOPS.length - 1; i++) {
+      const a = SKY_STOPS[i], b = SKY_STOPS[i + 1];
+      if (e >= a.e && e <= b.e) {
+        const t = (e - a.e) / (b.e - a.e);
+        return { top: mixColor(a.top, b.top, t), mid: mixColor(a.mid, b.mid, t), bot: mixColor(a.bot, b.bot, t) };
+      }
+    }
+    return SKY_STOPS[SKY_STOPS.length - 1];
+  })();
+  // Winter days get a paler, colder-looking sky
+  const winterize = (col) => (seasonKey === "Winter" && e > 0 ? mixColor(col, '#cbd5e1', 0.35 * Math.min(1, e / 35)) : col);
+  const skyStyle = {
+    background: `linear-gradient(to bottom, ${skyColors.top}, ${winterize(skyColors.mid)}, ${winterize(skyColors.bot)})`
+  };
+
+  // --- Sun & moon positions ---
+  // Left edge = east, right edge = west. The sun rises at the LEFT horizon at
+  // sunrise, arcs a half-circle peaking at solar noon (center), and sets at the
+  // RIGHT horizon — its horizontal travel is mapped across the daylight window.
+  // During polar day (24h daylight) there is no sunrise, so it circles the whole
+  // sky instead, dipping lowest at midnight. Vertical position is always the REAL
+  // elevation angle (horizon ≈ 62% down the frame, zenith ≈ 8%); bodies below the
+  // horizon sink behind the terrain, which is painted on top of them.
+  const HORIZON = 62, ZENITH = 8;
+  const yFromElevation = (elev) => HORIZON - (elev / 90) * (HORIZON - ZENITH);
+  const nightLength = 24 - dayLength;
+  const sunrise = 12 - dayLength / 2;
+  const sunset = 12 + dayLength / 2;
+
+  let sunX;
+  if (dayLength >= 23.9) {
+    // Polar day: the sun never sets — it sweeps around, low at midnight, high at noon
+    sunX = (time / 24) * 100;
+  } else if (dayLength <= 0.1) {
+    sunX = -20; // Polar night: sun stays hidden
+  } else {
+    // Rise at the left edge, set at the right edge (drifts offscreen outside the window)
+    sunX = ((time - sunrise) / dayLength) * 100;
+  }
+  const sunPos = {
+    x: Math.max(-20, Math.min(120, sunX)),
+    y: yFromElevation(e),
+    opacity: Math.max(0, Math.min(1, (e + 8) / 10))
+  };
+
+  // The moon arcs opposite the sun (schematic, like a full moon night): it rises
+  // in the east (LEFT) at sunset and crosses its arc over the night window.
+  // The signed phase keeps it parked just off the LEFT edge before moonrise, so
+  // the wrap from "set right" back to "waiting left" happens around midday,
+  // while the moon is fully invisible — it can never appear to rise from the west.
+  const moonElev = -e;
+  let moonX;
+  if (nightLength <= 0.1) {
+    moonX = -20; // Polar day: no night, moon stays hidden
+  } else {
+    const phase = ((time - sunset + 12 + 24) % 24) - 12; // hours since sunset, in [-12, 12)
+    moonX = (phase / nightLength) * 100;
+  }
+  const moonPos = {
+    x: Math.max(-20, Math.min(120, moonX)),
+    y: yFromElevation(moonElev),
+    opacity: Math.max(0, Math.min(1, (moonElev + 8) / 10)) * 0.95
+  };
+  // Stars fade in smoothly as the sun drops below the horizon
+  const starOpacity = Math.max(0, Math.min(1, (-e - 2) / 10)) * 0.85;
+  // Warm glow hugging the horizon around sunrise/sunset
+  const duskGlow = Math.max(0, 1 - Math.abs(e) / 10);
+
+  const getFoliageColors = () => {
+    switch (seasonKey) {
+      case "Spring":
+        return { leaf: "fill-emerald-400", subLeaf: "fill-green-300", ground: "fill-emerald-700" };
+      case "Summer":
+      case "WetHigh":
+        return { leaf: "fill-emerald-600", subLeaf: "fill-teal-500", ground: "fill-green-800" };
+      case "Autumn":
+      case "DryLow":
+        return { leaf: "fill-amber-600", subLeaf: "fill-orange-500", ground: "fill-amber-800" };
+      case "Winter":
+        return { leaf: "fill-slate-700", subLeaf: "fill-slate-600", ground: "fill-slate-100" };
+      default:
+        return { leaf: "fill-emerald-500", subLeaf: "fill-green-400", ground: "fill-green-700" };
+    }
+  };
+
+  const colors = getFoliageColors();
+
+  return (
+    <div
+      className="w-full h-64 md:h-80 rounded-xl relative overflow-hidden border border-slate-800"
+      style={skyStyle}
+    >
+      {/* Stars fade in smoothly as the sky darkens */}
+      <div className="absolute inset-0 pointer-events-none transition-opacity duration-700" style={{ opacity: starOpacity }}>
+        <div className="absolute w-1 h-1 bg-white rounded-full top-10 left-10 animate-ping" />
+        <div className="absolute w-1.5 h-1.5 bg-white rounded-full top-24 left-1/3 opacity-70" />
+        <div className="absolute w-1 h-1 bg-white rounded-full top-12 left-2/3" />
+        <div className="absolute w-1 h-1 bg-white rounded-full top-36 left-4/5 animate-pulse" />
+        <div className="absolute w-0.5 h-0.5 bg-white rounded-full top-48 left-1/4" />
+        <div className="absolute w-1 h-1 bg-white rounded-full top-6 left-1/2 opacity-60" />
+        <div className="absolute w-0.5 h-0.5 bg-white rounded-full top-28 left-[15%] opacity-80" />
+      </div>
+
+      {/* Warm glow hugging the horizon at sunrise/sunset */}
+      {duskGlow > 0 && (
+        <div
+          className="absolute pointer-events-none rounded-full blur-2xl"
+          style={{
+            left: `${sunPos.x}%`,
+            top: '58%',
+            width: '55%',
+            height: '30%',
+            transform: 'translate(-50%, -50%)',
+            background: 'radial-gradient(ellipse, rgba(251,146,60,0.55) 0%, rgba(244,63,94,0.25) 55%, transparent 75%)',
+            opacity: duskGlow
+          }}
+        />
+      )}
+
+      {/* Sun: rides its real elevation angle, sinks behind the hills */}
+      <div
+        className="absolute transition-all duration-500 flex items-center justify-center pointer-events-none"
+        style={{
+          left: `${sunPos.x}%`,
+          top: `${sunPos.y}%`,
+          transform: 'translate(-50%, -50%)',
+          opacity: sunPos.opacity
+        }}
+      >
+        <div className="absolute w-24 h-24 bg-amber-400/20 rounded-full blur-xl" />
+        <div className="absolute w-16 h-16 bg-orange-300/30 rounded-full blur-md" />
+        <div className="w-10 h-10 rounded-full bg-gradient-to-r from-amber-200 to-amber-400 shadow-xl shadow-amber-400/50" />
+      </div>
+
+      {/* Moon: arcs opposite the sun through the night */}
+      <div
+        className="absolute transition-all duration-500 flex items-center justify-center pointer-events-none"
+        style={{
+          left: `${moonPos.x}%`,
+          top: `${moonPos.y}%`,
+          transform: 'translate(-50%, -50%)',
+          opacity: moonPos.opacity
+        }}
+      >
+        <div className="absolute w-16 h-16 bg-slate-200/10 rounded-full blur-lg" />
+        <div className="relative w-7 h-7 rounded-full bg-slate-100 shadow-lg shadow-slate-200/40 overflow-hidden">
+          <div className="absolute w-6 h-6 rounded-full bg-slate-300/60 -right-2 -top-1.5" />
+          <div className="absolute w-1.5 h-1.5 rounded-full bg-slate-400/50 left-1.5 top-3.5" />
+          <div className="absolute w-1 h-1 rounded-full bg-slate-400/40 left-3.5 top-1.5" />
+        </div>
+      </div>
+
+      {/* Clouds drift gently side to side */}
+      <div
+        className="absolute top-8 left-0 right-0 h-12 flex justify-around pointer-events-none opacity-40"
+        style={{ animation: 'drift 45s ease-in-out infinite' }}
+      >
+        <div className="w-24 h-8 bg-white/70 rounded-full blur-sm animate-pulse" />
+        <div className="w-32 h-10 bg-white/80 rounded-full blur-sm" />
+      </div>
+
+      {/* Falling snow: round flakes drifting side to side (freezing temperatures) */}
+      {temp < 0 && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {[4, 14, 25, 37, 48, 58, 69, 79, 88, 96].map((left, i) => (
+            <div
+              key={i}
+              className={`absolute top-0 rounded-full bg-white ${i % 3 === 0 ? 'w-2 h-2 opacity-90' : i % 3 === 1 ? 'w-1.5 h-1.5 opacity-75' : 'w-1 h-1 opacity-60'}`}
+              style={{
+                left: `${left}%`,
+                animation: `fallSnow ${5 + (i % 4) * 1.3}s linear infinite`,
+                animationDelay: `${(i * 0.9) % 5}s`
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Rain streaks (only while the weather model says it's raining) */}
+      {temp >= 0 && weatherIcon && weatherIcon.includes('rain') && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {[8, 22, 38, 55, 70, 84, 94].map((left, i) => (
+            <div
+              key={i}
+              className="absolute top-0 w-0.5 h-8 rounded-full bg-gradient-to-b from-transparent via-sky-300/70 to-sky-200/80"
+              style={{
+                left: `${left}%`,
+                animation: `rainFall ${0.8 + (i % 3) * 0.25}s linear infinite`,
+                animationDelay: `${i * 0.17}s`
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Drifting autumn leaves */}
+      {temp >= 0 && (seasonKey === "Autumn" || seasonKey === "DryLow") && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {[12, 30, 52, 68, 86].map((left, i) => (
+            <div
+              key={i}
+              className={`absolute top-0 w-1.5 h-1.5 rounded-sm ${i % 2 === 0 ? 'bg-amber-500' : 'bg-orange-400'}`}
+              style={{
+                left: `${left}%`,
+                animation: `fallLeaf ${7 + (i % 3) * 2}s linear infinite`,
+                animationDelay: `${i * 1.4}s`
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Floating pollen / light motes on warm bright days */}
+      {temp >= 10 && solarElevation > 5 && (seasonKey === "Spring" || seasonKey === "Summer" || seasonKey === "WetHigh") && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {[18, 42, 63, 80].map((left, i) => (
+            <div
+              key={i}
+              className="absolute bottom-14 w-1 h-1 rounded-full bg-amber-100/70"
+              style={{
+                left: `${left}%`,
+                animation: `floatUp ${5.5 + i * 1.2}s ease-in infinite`,
+                animationDelay: `${i * 1.1}s`
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      <svg className="absolute bottom-0 w-full h-3/4" viewBox="0 0 1000 300" preserveAspectRatio="none">
+        <path 
+          d="M 0 250 Q 250 120 500 230 T 1000 220 L 1000 300 L 0 300 Z" 
+          className={seasonKey === "Winter" ? "fill-slate-400/60" : "fill-emerald-900/60"} 
+        />
+        <path 
+          d="M 0 260 Q 350 160 700 250 T 1000 240 L 1000 300 L 0 300 Z" 
+          className={seasonKey === "Winter" ? "fill-slate-300/70" : "fill-emerald-800/80"} 
+        />
+        <path 
+          d="M 0 270 Q 200 200 600 260 T 1000 260 L 1000 300 L 0 300 Z" 
+          className={colors.ground} 
+        />
+
+        {seasonKey !== "Winter" ? (
+          <g>
+            <rect x="180" y="210" width="16" height="70" className="fill-amber-950" />
+            <circle cx="188" cy="180" r="45" className={colors.leaf} />
+            <circle cx="160" cy="165" r="30" className={colors.subLeaf} />
+            <circle cx="215" cy="170" r="30" className={colors.subLeaf} />
+          </g>
+        ) : (
+          <g>
+            <path d="M 188 280 L 188 190 M 188 230 Q 160 210 150 190 M 188 210 Q 210 190 220 180 M 188 245 Q 210 230 225 210 M 188 220 Q 170 200 160 180" stroke="#451a03" strokeWidth="4" fill="none" />
+          </g>
+        )}
+
+        <g>
+          <rect x="750" y="190" width="14" height="90" className="fill-amber-950" />
+          <polygon points="757,100 710,180 804,180" className={seasonKey === "Winter" ? "fill-emerald-950" : "fill-emerald-700"} />
+          <polygon points="757,130 720,200 794,200" className={seasonKey === "Winter" ? "fill-emerald-900" : "fill-emerald-600"} />
+          <polygon points="757,160 730,220 784,220" className={seasonKey === "Winter" ? "fill-teal-950" : "fill-teal-700"} />
+        </g>
+
+        {seasonKey === "Winter" && (
+          <g>
+            <path d="M 0 270 Q 200 200 600 260 T 1000 260 L 1000 275 L 0 275 Z" className="fill-slate-50/90" />
+            <polygon points="757,100 740,130 774,130" className="fill-slate-50" />
+            <polygon points="757,130 735,160 779,160" className="fill-slate-100" />
+          </g>
+        )}
+      </svg>
+
+      <div className="absolute bottom-4 left-4 bg-slate-900/80 backdrop-blur border border-slate-700/50 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+        <Sun className="w-3.5 h-3.5 text-amber-400" />
+        <span className="text-xs font-mono font-semibold text-slate-200">
+          Lat {Math.abs(latitude).toFixed(0)}°{latitude >= 0 ? 'N' : 'S'} | {translatedSeason}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function SolarEarthAngleVisual({ latitude, declination, tilt, lang }) {
+  const rad = Math.PI / 180;
+
+  return (
+    <svg className="w-full h-full max-w-sm" viewBox="0 0 300 200">
+      <g stroke="#e11d48" strokeWidth="1" strokeDasharray="3,3" opacity="0.6">
+        <line x1="10" y1="50" x2="110" y2="50" />
+        <line x1="10" y1="100" x2="110" y2="100" strokeWidth="1.5" strokeDasharray="none" />
+        <line x1="10" y1="150" x2="110" y2="150" />
+      </g>
+      <text x="25" y="40" fill="#fb7185" className="text-[10px] uppercase font-bold tracking-wider">
+        {lang === 'en' ? 'Incoming Solar Rays' : 'รังสีตกกระทบจากดวงอาทิตย์'}
+      </text>
+
+      <g transform="translate(190, 100)">
+        <circle cx="0" cy="0" r="54" fill="none" stroke="#38bdf8" strokeWidth="1.5" opacity="0.4" strokeDasharray="3,3" />
+        <circle cx="0" cy="0" r="45" className="fill-slate-800 stroke-slate-600" strokeWidth="2" />
+        <path d="M 0 -45 A 45 45 0 0 1 0 45 Z" className="fill-slate-900" opacity="0.5" />
+
+        <g transform={`rotate(${tilt})`}>
+          <line x1="0" y1="-65" x2="0" y2="65" stroke="#10b981" strokeWidth="2.5" />
+          <text x="5" y="-55" fill="#10b981" className="text-[9px] font-mono font-bold">
+            {lang === 'en' ? 'N. Pole' : 'ขั้วโลกเหนือ'}
+          </text>
+          <text x="5" y="60" fill="#10b981" className="text-[9px] font-mono font-bold">
+            {lang === 'en' ? 'S. Pole' : 'ขั้วโลกใต้'}
+          </text>
+
+          <line x1="-55" y1="0" x2="55" y2="0" stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="2,2" />
+          <text x="40" y="-4" fill="#f59e0b" className="text-[8px] font-bold">
+            {lang === 'en' ? 'Equator' : 'เส้นศูนย์สูตร'}
+          </text>
+        </g>
+
+        <g transform={`rotate(${tilt})`}>
+          {(() => {
+            const angleRad = -latitude * rad;
+            const x = 45 * Math.cos(angleRad);
+            const y = 45 * Math.sin(angleRad);
+            return (
+              <g>
+                <line 
+                  x1={x - 20 * Math.sin(angleRad)} 
+                  y1={y + 20 * Math.cos(angleRad)} 
+                  x2={x + 20 * Math.sin(angleRad)} 
+                  y2={y - 20 * Math.cos(angleRad)} 
+                  stroke="#38bdf8" 
+                  strokeWidth="2" 
+                />
+                <circle cx={x} cy={y} r="4" className="fill-rose-500 animate-pulse" />
+                <line x1={x} y1={y} x2={x - 40} y2={y} stroke="#f43f5e" strokeWidth="1.5" />
+                <text x={x + 8} y={y + 4} fill="#f43f5e" className="text-[9px] font-bold">
+                  {lang === 'en' ? 'You' : 'คุณ'}
+                </text>
+              </g>
+            );
+          })()}
+        </g>
+      </g>
+    </svg>
+  );
+}
+
+createRoot(document.getElementById('root')).render(React.createElement(App));
+
+
+  </script>
+</body>
+</html>
