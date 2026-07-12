@@ -422,12 +422,14 @@ function App() {
   useEffect(() => {
     let intervalId;
     if (isTimePlaying) {
+      const stepHours = 0.1;
+      const intervalMs = 150;
       intervalId = setInterval(() => {
         setTimeOfDay((prev) => {
-          const next = prev + 0.25;
-          return next >= 24 ? 0 : next;
+          const next = prev + stepHours;
+          return next >= 24 ? next - 24 : next;
         });
-      }, 50);
+      }, intervalMs);
     }
     return () => clearInterval(intervalId);
   }, [isTimePlaying]);
